@@ -1,0 +1,4 @@
+# requirements.txt
+Flask==3.0.3
+pytest==8.2.2
+bandit==1.7.9
