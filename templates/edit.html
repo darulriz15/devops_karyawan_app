@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Edit Karyawan</title>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>Edit Data Karyawan</h2>
+        <form method="post">
+            <div class="form-group">
+                <label for="name">Nama</label>
+                <input type="text" class="form-control" name="name" value="{{ employee.name }}" required>
+            </div>
+            <div class="form-group">
+                <label for="position">Posisi</label>
+                <input type="text" class="form-control" name="position" value="{{ employee.position }}" required>
+            </div>
+            <div class="form-group">
+                <label for="salary">Gaji</label>
+                <input type="number" class="form-control" name="salary" value="{{ employee.salary }}" required>
+            </div>
+            <button type="submit" class="btn btn-success">Update</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Batal</a>
+        </form>
+    </div>
+</body>
+</html>
