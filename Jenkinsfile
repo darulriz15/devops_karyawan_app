@@ -43,7 +43,7 @@ pipeline {
             steps {
                 echo 'Membangun Docker image untuk aplikasi...'
                 // Perintah 'sh' sekarang bisa langsung menjalankan 'docker'
-                sh 'docker build -t flask-app-staging:${env.BUILD_ID} .'
+                sh "docker build -t flask-app-staging:${env.BUILD_ID} ."
             }
         }
 
@@ -51,7 +51,7 @@ pipeline {
             steps {
                 script {
                     // Jalankan aplikasi di dalam container untuk di-scan
-                    sh 'docker run -d --rm --name dast-target-app -p 8088:5000 flask-app-staging:${env.BUILD_ID}'
+                    sh "docker run -d --rm --name dast-target-app -p 8088:5000 flask-app-staging:${env.BUILD_ID}"
                     
                     // Tunggu beberapa detik agar aplikasi benar-benar siap
                     echo 'Menunggu aplikasi siap untuk DAST scan...'
@@ -83,7 +83,7 @@ pipeline {
                 sh 'docker rm staging-app || true'
                 
                 // Jalankan container baru sebagai staging environment
-                sh 'docker run -d --rm --name staging-app -p 5000:5000 flask-app-staging:${env.BUILD_ID}'
+                sh "docker run -d --rm --name staging-app -p 5000:5000 flask-app-staging:${env.BUILD_ID}"
                 echo 'Aplikasi berhasil di-deploy ke http://<IP_KALI_LINUX_ANDA>:5000'
             }
         }
