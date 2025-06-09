@@ -1,13 +1,12 @@
-// Jenkinsfile (Versi Final yang Disederhanakan)
+// Jenkinsfile FINAL (dengan perbaikan docker: not found)
 pipeline {
     agent {
         docker {
             image 'python:3.9-slim'
-            // Tambahkan argumen '--user root' untuk menjalankan sebagai root di dalam container agent
+            // Menjalankan sebagai root agar bisa install paket & menjalankan docker
             args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
         }
     }
-
     stages {
         stage('1. Checkout SCM') {
             steps {
@@ -15,22 +14,26 @@ pipeline {
                 checkout scm
             }
         }
-
-        stage('2. Build & Install Dependencies') {
+        // TAHAP BARU UNTUK MENGINSTALL DOCKER CLIENT
+        stage('2. Setup Environment') {
+            steps {
+                echo 'Installing Docker client inside the agent...'
+                sh 'apt-get update && apt-get install -y docker.io'
+            }
+        }
+        stage('3. Build & Install Dependencies') {
             steps {
                 echo 'Menginstall dependensi Python...'
                 sh 'pip install -r requirements.txt'
             }
         }
-
-        stage('3. Unit Test') {
+        stage('4. Unit Test') {
             steps {
                 echo 'Menjalankan unit tests dengan Pytest...'
                 sh 'PYTHONPATH=. pytest tests/'
             }
         }
-
-        stage('4. SAST (Static Analysis with Bandit)') {
+        stage('5. SAST (Static Analysis with Bandit)') {
             steps {
                 echo 'Memindai kode dengan Bandit...'
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
@@ -38,57 +41,43 @@ pipeline {
                 }
             }
         }
-
-        stage('5. Build Docker Image') {
+        stage('6. Build Docker Image') {
             steps {
                 echo 'Membangun Docker image untuk aplikasi...'
-                // Perintah 'sh' sekarang bisa langsung menjalankan 'docker'
                 sh "docker build -t flask-app-staging:${env.BUILD_ID} ."
             }
         }
-
-        stage('6. DAST (Dynamic Analysis with ZAP)') {
+        stage('7. DAST (Dynamic Analysis with ZAP)') {
             steps {
                 script {
-                    // Jalankan aplikasi di dalam container untuk di-scan
                     sh "docker run -d --rm --name dast-target-app -p 8088:5000 flask-app-staging:${env.BUILD_ID}"
-                    
-                    // Tunggu beberapa detik agar aplikasi benar-benar siap
+
                     echo 'Menunggu aplikasi siap untuk DAST scan...'
                     sleep 15
-                    
+
                     echo "Memulai OWASP ZAP Scan pada http://127.0.0.1:8088"
                     try {
-                        // Jalankan ZAP Scan. Pastikan network-nya bisa menjangkau host
                         sh "docker run --rm --network host -v \$(pwd):/zap/wrk/:rw owasp/zap2docker-stable zap-baseline.py -t http://127.0.0.1:8088 -J zap-report.json"
                     } catch (e) {
                         error "DAST Scan Gagal! Ditemukan kerentanan: ${e.getMessage()}"
                     } finally {
-                       // Hentikan container aplikasi setelah scan selesai
                        echo 'Menghentikan container DAST target...'
                        sh 'docker stop dast-target-app'
-                       // Publikasikan laporan ZAP sebagai artifact
                        archiveArtifacts artifacts: 'zap-report.json'
                     }
                 }
             }
         }
-
-        stage('7. Deploy to Staging') {
+        stage('8. Deploy to Staging') {
             steps {
                 echo 'Deployment ke Staging Environment...'
-                
-                // Hentikan container staging yang lama jika ada
                 sh 'docker stop staging-app || true'
                 sh 'docker rm staging-app || true'
-                
-                // Jalankan container baru sebagai staging environment
                 sh "docker run -d --rm --name staging-app -p 5000:5000 flask-app-staging:${env.BUILD_ID}"
-                echo 'Aplikasi berhasil di-deploy ke http://<IP_KALI_LINUX_ANDA>:5000'
+                echo "Aplikasi berhasil di-deploy ke http://<IP_KALI_LINUX_ANDA>:5000"
             }
         }
     }
-    
     post {
         always {
             echo 'Membersihkan workspace...'
