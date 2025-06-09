@@ -3,7 +3,8 @@ pipeline {
     agent {
         docker {
             image 'python:3.9-slim'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            // Tambahkan argumen '--user root' untuk menjalankan sebagai root di dalam container agent
+            args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
         }
     }
 
