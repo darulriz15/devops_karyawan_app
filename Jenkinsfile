@@ -57,7 +57,7 @@ pipeline {
 
                     echo "Memulai OWASP ZAP Scan pada http://127.0.0.1:8088"
                     try {
-                        sh "docker run --rm --network host -v \$(pwd):/zap/wrk/:rw owasp/zap-bare zap-baseline.py -t http://127.0.0.1:8088 -J zap-report.json"
+                        sh "docker run --rm --network host -v \$(pwd):/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -J zap-report.json"
                     } catch (e) {
                         error "DAST Scan Gagal! Ditemukan kerentanan: ${e.getMessage()}"
                     } finally {
