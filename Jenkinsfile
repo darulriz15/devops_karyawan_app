@@ -26,7 +26,7 @@ pipeline {
         stage('3. Unit Test') {
             steps {
                 echo 'Menjalankan unit tests dengan Pytest...'
-                sh 'pytest tests/'
+                sh 'PYTHONPATH=. pytest tests/'
             }
         }
 
