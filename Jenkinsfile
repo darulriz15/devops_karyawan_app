@@ -47,46 +47,31 @@ pipeline {
                 sh "docker build -t flask-app-staging:${env.BUILD_ID} ."
             }
         }
-	// Jenkinsfile - Ganti Stage 7 dengan ini
+	// Jenkinsfile - Ganti Stage 7 dengan versi final ini
 	stage('7. DAST (Dynamic Analysis with ZAP)') {
 	    steps {
 	        script {
-	            echo 'Menjalankan container aplikasi untuk DAST...'
-	            // Jalankan container aplikasi di background
 	            sh "docker run -d --rm --name dast-target-app -p 8088:5000 flask-app-staging:${env.BUILD_ID}"
 
 	            echo 'Menunggu 15 detik agar aplikasi siap...'
 	            sleep 15
 
-	            def zapReport = ''
 	            try {
-	                echo "Memulai OWASP ZAP Scan pada http://127.0.0.1:8088..."
-	                // Jalankan ZAP dan simpan output JSON ke variabel 'zapReport'
-	                // Opsi -J diganti dengan -T untuk memaksimalkan waktu scan
-	                // Kita tidak lagi mount volume -v
-	                zapReport = sh(
-	                    script: "docker run --rm --network host ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -T 5 -j",
-	                    returnStdout: true
-	                ).trim()
-
-	            } catch (e) {
-	                echo "DAST scan menemukan isu atau gagal dijalankan. Output:"
-	                echo e.getMessage()
-	                // Tetap simpan laporan jika ada, agar bisa dianalisis
-	                zapReport = e.getMessage()
+	                echo "Memulai OWASP ZAP Scan..."
+	                // Menggunakan catchError untuk menangani exit code dari ZAP dengan benar,
+	                // sama seperti pada tahap SAST.
+	                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+	                    sh "docker run --rm --network host --user 1000 --security-opt label=disable -v \$(pwd):/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -J zap-report.json -l WARN"
+	                }
 	            } finally {
-	                echo 'Menghentikan container aplikasi DAST...'
+	                // Blok finally ini akan selalu berjalan, baik scan berhasil maupun tidak.
+	                echo 'Menghentikan container DAST target...'
 	                sh 'docker stop dast-target-app || true'
 
-	                if (zapReport) {
-	                    echo "Menyimpan laporan DAST ke zap-report.json..."
-	                    // Tulis isi variabel ke file
-	                    writeFile file: 'zap-report.json', text: zapReport
-	                    // Arsipkan file
-	                    archiveArtifacts artifacts: 'zap-report.json'
-	                } else {
-	                    echo "Tidak ada laporan DAST yang dihasilkan."
-	                }
+	                echo "Mengarsipkan laporan DAST..."
+	                // Arsipkan laporan yang sekarang PASTI ada dan valid.
+	                // allowEmptyArchive untuk mencegah error jika file tidak ada karena masalah lain.
+	                archiveArtifacts artifacts: 'zap-report.json', allowEmptyArchive: true
 	            }
 	        }
 	    }
