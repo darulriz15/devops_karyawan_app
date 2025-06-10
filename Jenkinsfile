@@ -52,7 +52,7 @@ pipeline {
                 sh "docker build -t flask-app-staging:${env.BUILD_ID} ."
             }
         }
-	// Jenkinsfile - Ganti Stage 7 dengan ini
+	// Jenkinsfile - Ganti Stage 7 dengan versi PALING ROBUST ini
 	stage('7. DAST (Dynamic Analysis with ZAP)') {
 	    steps {
 	        script {
@@ -60,34 +60,34 @@ pipeline {
 	            echo 'Menunggu 15 detik agar aplikasi siap...'
 	            sleep 15
 
-	            def zapReportJson = ''
 	            try {
-	                echo "Memulai ZAP Scan dan menangkap output JSON..."
-	                // Jalankan ZAP untuk mencetak JSON ke stdout (-j) dan paksa selalu sukses (|| true)
-	                // agar kita bisa selalu menangkap laporannya untuk dianalisis.
-	                zapReportJson = sh(
+	                echo "Memulai ZAP Scan dan menangkap seluruh output..."
+	                def fullZapOutput = sh(
 	                    script: "docker run --rm --network host ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -T 5 -j || true",
 	                    returnStdout: true
 	                ).trim()
 
-	                // Tulis output yang ditangkap ke dalam file
-	                writeFile file: 'zap-report.json', text: zapReportJson
-	                archiveArtifacts artifacts: 'zap-report.json', allowEmptyArchive: true
+	                // === LOGIKA BARU UNTUK EKSTRAK JSON ===
+	                // Cari string yang diawali dengan '{' dan diakhiri dengan '}'
+	                def jsonMatch = (fullZapOutput =~ /\{.*\}/)
+	                if (jsonMatch) {
+	                    def zapReportJson = jsonMatch[0]
+	                    echo "Laporan JSON berhasil diekstrak."
+	                    writeFile file: 'zap-report.json', text: zapReportJson
+	                    archiveArtifacts artifacts: 'zap-report.json', allowEmptyArchive: true
 
-	                // === BAGIAN LOGIKA BARU UNTUK CEK HASIL ===
-	                if (zapReportJson) {
 	                    def report = readJSON text: zapReportJson
-	                    // ZAP menggunakan riskcode '3' untuk 'High'
 	                    def highAlerts = report.site.alerts.findAll { it.riskcode == '3' }
 
 	                    if (highAlerts.size() > 0) {
-	                        // GAGALKAN BUILD JIKA DITEMUKAN KERENTANAN 'HIGH'
 	                        error "DAST GAGAL: Ditemukan ${highAlerts.size()} kerentanan dengan tingkat HIGH."
 	                    } else {
 	                        echo "DAST Selesai: Tidak ditemukan kerentanan tingkat HIGH."
 	                    }
 	                } else {
-	                    echo "Peringatan: Laporan ZAP tidak berhasil ditangkap."
+	                    echo "PERINGATAN: Tidak ada laporan JSON yang ditemukan dalam output ZAP."
+	                    // Tulis output penuh ke log untuk debugging
+	                    echo "Output penuh ZAP:\n${fullZapOutput}"
 	                }
 
 	            } finally {
