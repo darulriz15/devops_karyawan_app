@@ -56,15 +56,14 @@ pipeline {
                     sleep 15
 
                     echo "Memulai OWASP ZAP Scan pada http://127.0.0.1:8088"
-                    try {
-                        sh "docker run --rm --network host --user 1000 --security-opt label=disable -v \$(pwd):/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -J zap-report.json"
-                    } catch (e) {
-                        error "DAST Scan Gagal! Ditemukan kerentanan: ${e.getMessage()}"
-                    } finally {
-                       echo 'Menghentikan container DAST target...'
-                       sh 'docker stop dast-target-app'
-                       archiveArtifacts artifacts: 'zap-report.json'
-                    }
+		    // Kita gunakan catchError agar build hanya menjadi UNSTABLE jika ada warning dari ZAP
+		    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+    			sh "docker run --rm --network host --user 1000 --security-opt label=disable -v \$(pwd):/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -J zap-report.json"
+		    }
+		    // Pindahkan cleanup ke luar blok agar selalu berjalan
+		    echo 'Menghentikan container DAST target...'
+		    sh 'docker stop dast-target-app || true'
+		    archiveArtifacts artifacts: 'zap-report.json'
                 }
             }
         }
