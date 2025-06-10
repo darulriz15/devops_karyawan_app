@@ -5,6 +5,7 @@ from functools import wraps
 import os
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 # Kunci rahasia diperlukan untuk menggunakan session (autentikasi)
 app.secret_key = os.urandom(24)
 
@@ -15,6 +16,7 @@ app_password = os.environ.get('APP_PASSWORD', 'password123')
 USER_CREDENTIALS = {
     app_user: app_password
 }
+app.logger.info('Aplikasi Data Karyawan dimulai.')
 
 # --- Database In-Memory Sederhana ---
 # Untuk kesederhanaan, kita gunakan list of dictionaries sebagai database
@@ -46,11 +48,12 @@ def login():
             session['logged_in'] = True
             session['username'] = username
             flash('Login berhasil!', 'success')
+            app.logger.info(f"User '{username}' berhasil login.") # <-- TAMBAHKAN INI
             return redirect(url_for('index'))
         else:
             flash('Username atau password salah.', 'danger')
-    return render_template('login.html')
-
+            app.logger.warning(f"Percobaan login gagal untuk user '{username}'.") # <-- TAMBAHKAN INI
+        return render_template('login.html')
 @app.route('/logout')
 def logout():
     session.clear()
@@ -85,6 +88,7 @@ def add_employee():
         employees.append(new_employee)
         next_id += 1
         flash('Karyawan berhasil ditambahkan!', 'success')
+        app.logger.info(f"Karyawan baru '{new_employee['name']}' berhasil ditambahkan.") # <-- TAMBAHKAN INI
         return redirect(url_for('index'))
     return render_template('add.html')
 
@@ -118,6 +122,7 @@ def delete_employee(employee_id):
     # Filter karyawan, buang yang ID-nya cocok
     employees = [emp for emp in employees if emp['id'] != employee_id]
     flash('Karyawan berhasil dihapus!', 'warning')
+    app.logger.info(f"Karyawan dengan ID {employee_id} berhasil dihapus.")
     return redirect(url_for('index'))
 
 # Menjalankan aplikasi
