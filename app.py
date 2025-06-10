@@ -54,7 +54,8 @@ def login():
         else:
             flash('Username atau password salah.', 'danger')
             app.logger.warning(f"Percobaan login gagal untuk user '{username}'.") # <-- TAMBAHKAN INI
-        return render_template('login.html')
+            return render_template('login.html')
+    return render_template('login.html')
 @app.route('/logout')
 def logout():
     session.clear()
