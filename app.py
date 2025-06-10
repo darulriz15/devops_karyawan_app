@@ -72,10 +72,10 @@ def add_employee():
     if request.method == 'POST':
         global next_id
         try:
-	    salary = int(request.form['salary'])
+            salary = int(request.form['salary'])
         except ValueError:
-	    flash('Gaji harus berupa angka.', 'danger')
-	    return redirect(url_for('add_employee'))
+            flash('Gaji harus berupa angka.', 'danger')
+            return redirect(url_for('add_employee'))
         new_employee = {
             'id': next_id,
             'name': request.form['name'],
@@ -99,10 +99,10 @@ def edit_employee(employee_id):
 
     if request.method == 'POST':
         try:
-	    employee['salary'] = int(request.form['salary'])
+            employee['salary'] = int(request.form['salary'])
         except ValueError:
-	    flash('Gaji harus berupa angka.', 'danger')
-	    return redirect(url_for('edit_employee', employee_id=employee_id))
+            flash('Gaji harus berupa angka.', 'danger')
+            return redirect(url_for('edit_employee', employee_id=employee_id))
         employee['name'] = request.form['name']
         employee['position'] = request.form['position']
         flash('Data karyawan berhasil diperbarui!', 'success')
