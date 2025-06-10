@@ -10,8 +10,10 @@ app.secret_key = os.urandom(24)
 
 # --- Autentikasi Sederhana ---
 # Data user (bisa diganti dengan data dari database pada aplikasi nyata)
+app_user = os.environ.get('APP_USER', 'admin')
+app_password = os.environ.get('APP_PASSWORD', 'password123')
 USER_CREDENTIALS = {
-    'admin': 'password123'
+    app_user: app_password
 }
 
 # --- Database In-Memory Sederhana ---
@@ -69,11 +71,16 @@ def index():
 def add_employee():
     if request.method == 'POST':
         global next_id
+	try:
+	    salary = int(request.form['salary'])
+	except ValueError:
+	    flash('Gaji harus berupa angka.', 'danger')
+	    return redirect(url_for('add_employee'))
         new_employee = {
             'id': next_id,
             'name': request.form['name'],
             'position': request.form['position'],
-            'salary': int(request.form['salary'])
+            'salary': salary
         }
         employees.append(new_employee)
         next_id += 1
@@ -91,9 +98,13 @@ def edit_employee(employee_id):
         return "Karyawan tidak ditemukan", 404
 
     if request.method == 'POST':
+	try:
+	    employee['salary'] = int(request.form['salary'])
+	except ValueError:
+	    flash('Gaji harus berupa angka.', 'danger')
+	    return redirect(url_for('edit_employee', employee_id=employee_id))
         employee['name'] = request.form['name']
         employee['position'] = request.form['position']
-        employee['salary'] = int(request.form['salary'])
         flash('Data karyawan berhasil diperbarui!', 'success')
         return redirect(url_for('index'))
 

@@ -1,0 +1,14 @@
+# Dockerfile.jenkins
+
+# 1. Gunakan image resmi Jenkins Long-Term Support (LTS) yang terbaru dan aman
+FROM jenkins/jenkins:lts-jdk17
+
+# 2. Ganti ke user 'root' untuk menginstall paket tambahan
+USER root
+
+# 3. Update daftar paket dan install Docker client di dalam image Jenkins
+#    Ini akan memberikan perintah 'docker' yang kita butuhkan
+RUN apt-get update && apt-get install -y docker.io
+
+# 4. Ganti kembali ke user 'jenkins' yang lebih aman untuk operasional
+USER jenkins
