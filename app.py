@@ -3,6 +3,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from functools import wraps
 import os
+import logging
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
