@@ -71,9 +71,9 @@ def index():
 def add_employee():
     if request.method == 'POST':
         global next_id
-	try:
+        try:
 	    salary = int(request.form['salary'])
-	except ValueError:
+        except ValueError:
 	    flash('Gaji harus berupa angka.', 'danger')
 	    return redirect(url_for('add_employee'))
         new_employee = {
@@ -98,9 +98,9 @@ def edit_employee(employee_id):
         return "Karyawan tidak ditemukan", 404
 
     if request.method == 'POST':
-	try:
+        try:
 	    employee['salary'] = int(request.form['salary'])
-	except ValueError:
+        except ValueError:
 	    flash('Gaji harus berupa angka.', 'danger')
 	    return redirect(url_for('edit_employee', employee_id=employee_id))
         employee['name'] = request.form['name']
