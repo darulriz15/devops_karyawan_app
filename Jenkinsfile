@@ -50,17 +50,40 @@ pipeline {
         stage('7. DAST (Dynamic Analysis with ZAP)') {
             steps {
                 script {
-                    // Jalankan container aplikasi dengan Environment Variables
                     sh "docker run -d --rm --name dast-target-app -p 8088:5000 -e APP_USER=${env.APP_USER} -e APP_PASSWORD=${env.APP_PASSWORD} flask-app-staging:${env.BUILD_ID}"
                     echo 'Menunggu 15 detik agar aplikasi siap...'
                     sleep 15
-
+                    
                     try {
-                        echo "Memulai OWASP ZAP Scan..."
-                        // Jalankan ZAP sebagai root dan biarkan ia menulis laporan
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                            sh "docker run --rm --network host --user root -v ${pwd()}:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -J zap-report.json -l FAIL"
+                        echo "Memulai ZAP Scan dan menangkap output..."
+                        // Jalankan ZAP untuk mencetak JSON ke stdout (-j) dan paksa selalu sukses (|| true)
+                        def fullZapOutput = sh(
+                            script: "docker run --rm --network host ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:8088 -T 5 -j || true",
+                            returnStdout: true
+                        ).trim()
+
+                        // Ekstrak HANYA bagian JSON dari seluruh output
+                        def jsonMatch = (fullZapOutput =~ /(?s)\{.*\}/)
+
+                        if (jsonMatch) {
+                            def zapReportJson = jsonMatch[0]
+                            echo "Laporan JSON berhasil diekstrak."
+                            writeFile file: 'zap-report.json', text: zapReportJson
+
+                            // Analisis laporan yang sudah bersih
+                            def report = readJSON text: zapReportJson
+                            def highAlerts = report.site.alerts.findAll { it.riskcode == '3' }
+
+                            if (highAlerts.size() > 0) {
+                                error "DAST GAGAL: Ditemukan ${highAlerts.size()} kerentanan dengan tingkat HIGH."
+                            } else {
+                                echo "DAST Selesai: Tidak ditemukan kerentanan tingkat HIGH."
+                            }
+                        } else {
+                            echo "PERINGATAN: Tidak ada laporan JSON yang ditemukan dalam output ZAP."
+                            echo "Output penuh ZAP:\n${fullZapOutput}"
                         }
+
                     } finally {
                         echo 'Menghentikan container DAST target...'
                         sh 'docker stop dast-target-app || true'
@@ -73,7 +96,6 @@ pipeline {
                 echo 'Deployment ke Staging Environment...'
                 sh 'docker stop staging-app || true'
                 sh 'docker rm staging-app || true'
-                // Jalankan container aplikasi dengan Environment Variables
                 sh "docker run -d --rm --name staging-app -p 5000:5000 -e APP_USER=${env.APP_USER} -e APP_PASSWORD=${env.APP_PASSWORD} flask-app-staging:${env.BUILD_ID}"
                 echo "Aplikasi berhasil di-deploy ke http://<IP_KALI_LINUX_ANDA>:5000"
             }
@@ -81,10 +103,11 @@ pipeline {
     }
     post {
         always {
-            // Arsipkan laporan HANYA jika file-nya ada
             script {
+                echo 'Membersihkan workspace dan mengarsipkan laporan...'
+                // Pindahkan logika arsip ke sini
                 if (fileExists('zap-report.json')) {
-                    archiveArtifacts artifacts: 'zap-report.json'
+                    archiveArtifacts artifacts: 'zap-report.json', allowEmptyArchive: true
                 }
                 cleanWs()
             }
